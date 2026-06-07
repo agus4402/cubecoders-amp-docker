@@ -1,0 +1,47 @@
+name: Check for new AMP version
+
+on:
+  schedule:
+    # Runs daily at midnight UTC
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.compare.outputs.new_version }}
+      amp_version: ${{ steps.resolve.outputs.amp_version }}
+
+    steps:
+      - name: Resolve latest AMP version
+        id: resolve
+        run: |
+          AMP_VER=$(curl -fsSL https://cubecoders.com/AMPVersions.json | jq -r '.AMPCore')
+          echo "amp_version=$AMP_VER" >> "$GITHUB_OUTPUT"
+          echo "Latest AMP version: $AMP_VER"
+
+      - name: Check if tag already exists on Docker Hub
+        id: compare
+        env:
+          AMP_VER: ${{ steps.resolve.outputs.amp_version }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://hub.docker.com/v2/repositories/${DOCKERHUB_USERNAME}/cubecoders-amp/tags/${AMP_VER}/")
+          echo "Docker Hub response for tag ${AMP_VER}: HTTP ${STATUS}"
+          if [ "$STATUS" != "200" ]; then
+            echo "new_version=true" >> "$GITHUB_OUTPUT"
+            echo "New version detected: $AMP_VER — triggering build."
+          else
+            echo "new_version=false" >> "$GITHUB_OUTPUT"
+            echo "Tag ${AMP_VER} already exists. Nothing to do."
+          fi
+
+  trigger-build:
+    needs: check
+    if: needs.check.outputs.new_version == 'true'
+    uses: ./.github/workflows/build-publish.yml
+    with:
+      amp_version: ${{ needs.check.outputs.amp_version }}
+    secrets: inherit

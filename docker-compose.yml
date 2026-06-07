@@ -1,0 +1,29 @@
+services:
+  amp:
+    image: agus4402/cubecoders-amp:stable
+    # IMPORTANT: assign a fixed MAC address to prevent AMP license
+    # deactivation on container restarts (Docker changes MAC each time by default).
+    # Generate your own: printf '02:42:ac:%02x:%02x:%02x\n' $((RANDOM%256)) $((RANDOM%256)) $((RANDOM%256))
+    mac_address: "02:42:ac:11:22:33"
+    environment:
+      - USERNAME=admin
+      - PASSWORD=changeme        # Change this!
+      - PORT=8080
+      - TZ=America/Argentina/Buenos_Aires
+      - LICENSE=                 # Your CubeCoders license key
+      - UID=1000
+      - GID=1000
+      - MODULE=ADS
+    volumes:
+      - amp-data:/home/amp/.ampdata
+    ports:
+      - "8080:8080"
+      # Game server ports — add more as needed:
+      # - "25565:25565"          # Minecraft Java
+      # - "19132:19132/udp"      # Minecraft Bedrock
+      # - "27015:27015/udp"      # Source engine games
+      # - "7777:7777/udp"        # Various games
+    restart: unless-stopped
+
+volumes:
+  amp-data:
