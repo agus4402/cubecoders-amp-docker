@@ -23,6 +23,7 @@ services:
       # - "19132:19132/udp"      # Minecraft Bedrock
       # - "27015:27015/udp"      # Source engine games
       # - "7777:7777/udp"        # Various games
+    tty: true
     restart: unless-stopped
 
 volumes:
