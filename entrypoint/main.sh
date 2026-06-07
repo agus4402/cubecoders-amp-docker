@@ -16,7 +16,7 @@ echo ""
 # Graceful shutdown: forward SIGTERM/SIGINT to the AMP process
 _shutdown() {
     echo "[main] Shutting down AMP..."
-    su amp -c "ampinstmgr Stop Main" 2>/dev/null || true
+    su amp -c "ampinstmgr --StopInstance Main" 2>/dev/null || true
     exit 0
 }
 trap _shutdown SIGTERM SIGINT
