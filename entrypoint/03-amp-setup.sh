@@ -1,49 +1,40 @@
 #!/bin/bash
 # Initialize AMP instance on first run.
-# On subsequent runs the existing data volume is reused unchanged.
+# Uses ampinstmgr --ShowInstancesList to verify the instance really exists
+# rather than relying on a marker file that can get out of sync.
 
 INSTANCE_DIR="/home/amp/.ampdata"
-INSTANCE_MARKER="${INSTANCE_DIR}/.amp_initialized"
+LICENSE_ARG="${LICENSE:-none}"
 
-echo "[03-amp-setup] Checking AMP initialization..."
+echo "[03-amp-setup] Checking if AMP instance 'Main' exists..."
 
-if [ -f "${INSTANCE_MARKER}" ]; then
-    echo "[03-amp-setup] Existing AMP instance found, skipping init."
+INSTANCES=$(su amp -c "ampinstmgr --ShowInstancesList" 2>&1 || true)
+echo "[03-amp-setup] Current instances: ${INSTANCES:-none}"
+
+if echo "${INSTANCES}" | grep -qi "\bMain\b"; then
+    echo "[03-amp-setup] Instance 'Main' found. Skipping init."
     return 0
 fi
 
-echo "[03-amp-setup] First run — creating AMP instance (module: ${MODULE})"
+echo "[03-amp-setup] First run — creating AMP instance (module: ${MODULE}, port: ${PORT})"
 
 if [ -z "${LICENSE}" ]; then
-    echo "[03-amp-setup] WARNING: LICENSE is not set. AMP will run in eval mode."
+    echo "[03-amp-setup] WARNING: LICENSE not set. AMP will run in eval mode."
+    LICENSE_ARG="none"
 fi
 
 if [ "${PASSWORD}" = "password" ]; then
     echo "[03-amp-setup] WARNING: Using default password. Change it after first login!"
 fi
 
-# ampinstmgr uses Console.SetCursorPosition for interactive prompts, which
-# requires a TTY. We use 'script' to provide a fake PTY so it doesn't crash
-# when Docker is started without --tty / tty:true.
-AMPINSTMGR_CMD="ampinstmgr CreateInstance '${MODULE}' Main '${LICENSE}' '${USERNAME}' '${PASSWORD}' console"
+# Full positional syntax (all 7 args must be provided to avoid interactive prompts):
+#   Module  InstanceName  IPBinding  Port       LicenceKey    Username    Password
+su amp -c "ampinstmgr CreateInstance '${MODULE}' Main '0.0.0.0' '${PORT}' '${LICENSE_ARG}' '${USERNAME}' '${PASSWORD}'" \
+    2>&1 | sed 's/^/[ampinstmgr] /'
 
-su amp -c "script -q -c \"${AMPINSTMGR_CMD}\" /dev/null" 2>&1 \
-    | sed 's/^/[ampinstmgr] /'
-
-EXIT_CODE=${PIPESTATUS[0]}
-
-if [ "${EXIT_CODE}" -ne 0 ]; then
-    echo "[03-amp-setup] ERROR: ampinstmgr exited with code ${EXIT_CODE}. Check the logs above."
-    exit "${EXIT_CODE}"
+if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+    echo "[03-amp-setup] ERROR: CreateInstance failed. Check logs above."
+    exit 1
 fi
 
-# Patch the port in the instance config if non-default
-if [ "${PORT}" != "8080" ]; then
-    CONFIG_FILE="${INSTANCE_DIR}/AMP/Instances/Main/AMPConfig.conf"
-    if [ -f "${CONFIG_FILE}" ]; then
-        sed -i "s/AMP.Primary.Port=.*/AMP.Primary.Port=${PORT}/" "${CONFIG_FILE}" || true
-    fi
-fi
-
-touch "${INSTANCE_MARKER}"
 echo "[03-amp-setup] AMP instance created successfully."
