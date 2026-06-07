@@ -32,14 +32,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && update-locale LANG=en_US.UTF-8 \
     && rm -rf /var/lib/apt/lists/*
 
-# Add CubeCoders APT repository and install ampinstmgr
+# Extract the ampinstmgr binary from the .deb without running its post-install
+# scripts, which try to enable systemd services and fail inside Docker.
 RUN curl -fsSL https://repo.cubecoders.com/archive.key \
         | gpg --dearmor -o /usr/share/keyrings/cubecoders.gpg \
     && echo "deb [signed-by=/usr/share/keyrings/cubecoders.gpg] http://repo.cubecoders.com/ debian/" \
         > /etc/apt/sources.list.d/cubecoders.list \
     && apt-get update \
-    && apt-get install -y --no-install-recommends ampinstmgr \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get install -y --no-install-recommends --download-only ampinstmgr \
+    && mkdir -p /tmp/ampinstmgr \
+    && dpkg-deb -x /var/cache/apt/archives/ampinstmgr_*.deb /tmp/ampinstmgr \
+    && mv /tmp/ampinstmgr/opt/cubecoders/amp/ampinstmgr /usr/local/bin/ampinstmgr \
+    && chmod +x /usr/local/bin/ampinstmgr \
+    && rm -rf /tmp/ampinstmgr /var/lib/apt/lists/*
 
 # Download and cache the AMP core zip at build time.
 # If AMP_VERSION=latest, the current version is resolved from AMPVersions.json.
