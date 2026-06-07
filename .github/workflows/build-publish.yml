@@ -17,6 +17,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment: Docker
 
     steps:
       - name: Checkout repository

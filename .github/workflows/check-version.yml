@@ -9,6 +9,7 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    environment: Docker
     outputs:
       new_version: ${{ steps.compare.outputs.new_version }}
       amp_version: ${{ steps.resolve.outputs.amp_version }}
