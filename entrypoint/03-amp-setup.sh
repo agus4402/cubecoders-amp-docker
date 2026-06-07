@@ -1,9 +1,7 @@
 #!/bin/bash
 # Initialize AMP instance on first run.
-# Uses ampinstmgr --ShowInstancesList to verify the instance really exists
-# rather than relying on a marker file that can get out of sync.
+# Uses ampinstmgr --ShowInstancesList to verify the instance really exists.
 
-INSTANCE_DIR="/home/amp/.ampdata"
 LICENSE_ARG="${LICENSE:-none}"
 
 echo "[03-amp-setup] Checking if AMP instance 'Main' exists..."
@@ -27,13 +25,12 @@ if [ "${PASSWORD}" = "password" ]; then
     echo "[03-amp-setup] WARNING: Using default password. Change it after first login!"
 fi
 
-# Full positional syntax (all 7 args must be provided to avoid interactive prompts):
-#   Module  InstanceName  IPBinding  Port       LicenceKey    Username    Password
-su amp -c "ampinstmgr CreateInstance '${MODULE}' Main '0.0.0.0' '${PORT}' '${LICENSE_ARG}' '${USERNAME}' '${PASSWORD}'" \
-    2>&1 | sed 's/^/[ampinstmgr] /'
+# Full positional syntax: Module InstanceName IPBinding Port LicenceKey Username Password
+CREATE_OUTPUT=$(su amp -c "ampinstmgr CreateInstance '${MODULE}' Main '0.0.0.0' '${PORT}' '${LICENSE_ARG}' '${USERNAME}' '${PASSWORD}'" 2>&1)
+echo "${CREATE_OUTPUT}" | sed 's/^/[ampinstmgr] /'
 
-if [ "${PIPESTATUS[0]}" -ne 0 ]; then
-    echo "[03-amp-setup] ERROR: CreateInstance failed. Check logs above."
+if echo "${CREATE_OUTPUT}" | grep -qi "\[Error"; then
+    echo "[03-amp-setup] ERROR: CreateInstance reported errors. Check logs above."
     exit 1
 fi
 

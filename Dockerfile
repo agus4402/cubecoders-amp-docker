@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         curl wget jq git tmux socat unzip procps \
         gnupg ca-certificates tzdata libcurl4 \
         locales software-properties-common \
+        iputils-ping \
     && sed -i 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen \
     && dpkg-reconfigure --frontend=noninteractive locales \
     && update-locale LANG=en_US.UTF-8 \
